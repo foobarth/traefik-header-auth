@@ -1,4 +1,4 @@
-package headerAuth
+package traefik_header_auth
 
 import (
 	"context"
@@ -8,19 +8,24 @@ import (
 	"regexp"
 )
 
+type HeaderRule struct {
+	Name    string
+	Pattern string
+}
+
 type Config struct {
-	Headers map[string]string `json:"headers,omitempty"`
+	Headers []HeaderRule `json:"headers,omitempty"`
 }
 
 func CreateConfig() *Config {
 	return &Config{
-		Headers: make(map[string]string),
+		Headers: make([]HeaderRule, 0),
 	}
 }
 
 type HeaderAuth struct {
 	next    http.Handler
-	headers map[string]string
+	headers []HeaderRule
 	name    string
 }
 
@@ -37,25 +42,31 @@ func New(ctx context.Context, next http.Handler, config *Config, name string) (h
 }
 
 func (plugin *HeaderAuth) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
-	for key, value := range plugin.headers {
-		headerValue := req.Header.Get(key)
+	for _, rule := range plugin.headers {
+		// catch empty entries
+		if rule.Name == "" || rule.Pattern == "" {
+			continue
+		}
+
+		headerValue := req.Header.Get(rule.Name)
+		os.Stdout.WriteString(fmt.Sprintf("%s: %s\n", rule.Name, headerValue))
 		if headerValue == "" {
 			http.Error(rw, "missing header", http.StatusBadRequest)
-			os.Stderr.WriteString(fmt.Sprintf("header '%s' not provided in request", key))
+			os.Stdout.WriteString(fmt.Sprintf("header '%s' not provided in request\n", rule.Name))
 			return
 		}
 
-		re, err := regexp.Compile(value)
+		re, err := regexp.Compile(rule.Pattern)
 		if err != nil {
 			http.Error(rw, "configuration error", http.StatusInternalServerError)
-			os.Stderr.WriteString(fmt.Sprintf("regex pattern for header '%s' does not compile", key))
+			os.Stdout.WriteString(fmt.Sprintf("regex pattern for header '%s' does not compile\n", rule.Name))
 			return
 		}
 
 		match := re.MatchString(headerValue)
 		if !match {
 			http.Error(rw, "unauthorized", http.StatusUnauthorized)
-			os.Stderr.WriteString(fmt.Sprintf("value for header '%s' does not match regular expression", key))
+			os.Stdout.WriteString(fmt.Sprintf("value for header '%s' does not match regular expression\n", rule.Name))
 			return
 		}
 	}

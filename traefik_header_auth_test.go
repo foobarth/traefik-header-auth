@@ -1,4 +1,4 @@
-package headerAuth_test
+package traefik_header_auth_test
 
 import (
 	"context"
@@ -6,17 +6,22 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	headerAuth "github.com/foobarth/traefik-header-auth"
+	plugin "github.com/foobarth/traefik-header-auth"
 )
 
 func TestHeaderAuth(t *testing.T) {
-	cfg := headerAuth.CreateConfig()
-	cfg.Headers["User-Agent"] = ":* myAllowedUserAgent .*"
+	cfg := plugin.CreateConfig()
+	cfg.Headers = []plugin.HeaderRule{
+		{
+			Name:    "User-Agent",
+			Pattern: ".*myAllowedUserAgent.*",
+		},
+	}
 
 	ctx := context.Background()
 	next := http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {})
 
-	handler, err := headerAuth.New(ctx, next, cfg, "headerAuth-plugin")
+	handler, err := plugin.New(ctx, next, cfg, "headerAuth-plugin")
 	if err != nil {
 		t.Fatal(err)
 	}
