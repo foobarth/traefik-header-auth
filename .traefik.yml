@@ -1,0 +1,11 @@
+displayName: Header Authentication
+type: middleware
+iconPath:
+
+import: github.com/foobarth/traefik-header-auth
+
+summary: 'Authenticate a request based on arbitrary header information'
+
+testData:
+  Headers:
+    X-Foo: foo
